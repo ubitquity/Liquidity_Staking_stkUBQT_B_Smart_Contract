@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UBQT_B Staking</title>
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.9.0/dist/web3.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f9f9f9;
+      color: #333;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    button {
+      padding: 0.5rem 1rem;
+      margin: 0.5rem 0;
+      font-size: 1rem;
+      cursor: pointer;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+    }
+
+    input[type="number"] {
+      padding: 0.5rem;
+      font-size: 1rem;
+      width: 100%;
+      margin-top: 0.5rem;
+      margin-bottom: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    div.section {
+      background: white;
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        padding: 1rem;
+      }
+
+      button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>UBQT_B Liquid Staking Interface</h1>
+
+    <div class="section">
+      <button onclick="connectWallet()">Connect Wallet</button>
+    </div>
+
+    <div class="section">
+      <h3>Stake UBQT_B</h3>
+      <input type="number" id="stakeAmount" placeholder="Amount to Stake" />
+      <button onclick="stakeTokens()">Stake</button>
+    </div>
+
+    <div class="section">
+      <h3>Unstake UBQT_B</h3>
+      <input type="number" id="unstakeAmount" placeholder="Amount to Unstake" />
+      <button onclick="unstakeTokens()">Unstake</button>
+    </div>
+
+    <div class="section">
+      <h3>Claim Rewards</h3>
+      <button onclick="claimRewards()">Claim</button>
+    </div>
+
+    <div class="section">
+      <h3>Staker Info</h3>
+      <button onclick="getStakerInfo()">Refresh Info</button>
+      <pre id="info"></pre>
+    </div>
+  </div>
+
+  <script>
+    let web3;
+    let userAddress;
+    const stakingContractAddress = "YOUR_STAKING_CONTRACT_ADDRESS";
+    const stakingAbi = [
+      {
+        "inputs": [
+          { "internalType": "address", "name": "_ubqtb", "type": "address" },
+          { "internalType": "address", "name": "_stkToken", "type": "address" }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "constructor"
+      },
+      {
+        "inputs": [],
+        "name": "claimRewards",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          { "internalType": "uint256", "name": "_period", "type": "uint256" }
+        ],
+        "name": "setCooldownPeriod",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          { "internalType": "uint256", "name": "_rate", "type": "uint256" }
+        ],
+        "name": "setRewardRate",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          { "internalType": "uint256", "name": "amount", "type": "uint256" }
+        ],
+        "name": "stake",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          { "internalType": "uint256", "name": "amount", "type": "uint256" }
+        ],
+        "name": "unstake",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          { "internalType": "address", "name": "token", "type": "address" },
+          { "internalType": "uint256", "name": "amount", "type": "uint256" }
+        ],
+        "name": "recoverTokens",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          { "internalType": "address", "name": "user", "type": "address" }
+        ],
+        "name": "getStakerInfo",
+        "outputs": [
+          { "internalType": "uint256", "name": "balance", "type": "uint256" },
+          { "internalType": "uint256", "name": "reward", "type": "uint256" },
+          { "internalType": "uint256", "name": "cooldownEnd", "type": "uint256" }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      }
+    ];
+
+    async function connectWallet() {
+      if (window.ethereum) {
+        web3 = new Web3(window.ethereum);
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        userAddress = accounts[0];
+        alert("Connected: " + userAddress);
+      }
+    }
+
+    async function stakeTokens() {
+      const amount = document.getElementById("stakeAmount").value;
+      const contract = new web3.eth.Contract(stakingAbi, stakingContractAddress);
+      await contract.methods.stake(web3.utils.toWei(amount, 'ether')).send({ from: userAddress });
+    }
+
+    async function unstakeTokens() {
+      const amount = document.getElementById("unstakeAmount").value;
+      const contract = new web3.eth.Contract(stakingAbi, stakingContractAddress);
+      await contract.methods.unstake(web3.utils.toWei(amount, 'ether')).send({ from: userAddress });
+    }
+
+    async function claimRewards() {
+      const contract = new web3.eth.Contract(stakingAbi, stakingContractAddress);
+      await contract.methods.claimRewards().send({ from: userAddress });
+    }
+
+    async function getStakerInfo() {
+      const contract = new web3.eth.Contract(stakingAbi, stakingContractAddress);
+      const info = await contract.methods.getStakerInfo(userAddress).call();
+      const cooldown = new Date(info.cooldownEnd * 1000).toLocaleString();
+      document.getElementById("info").innerText = `Balance: ${web3.utils.fromWei(info.balance, 'ether')} UBQT_B\nPending Rewards: ${web3.utils.fromWei(info.reward, 'ether')} UBQT_B\nCooldown Ends: ${cooldown}`;
+    }
+  </script>
+</body>
+</html>
