@@ -1,0 +1,58 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+// Derivative token for staked UBQT_B
+contract stkUBQT_B is ERC20, Ownable {
+    constructor() ERC20("Staked UBQT_B", "stkUBQT_B") {}
+
+    function mint(address to, uint256 amount) external onlyOwner {
+        _mint(to, amount);
+    }
+
+    function burn(address from, uint256 amount) external onlyOwner {
+        _burn(from, amount);
+    }
+}
+
+// Liquid staking pool
+contract UBQTBStaking is Ownable {
+    IERC20 public ubqtb;
+    stkUBQT_B public stkToken;
+
+    uint256 public totalStaked;
+    mapping(address => uint256) public stakedBalances;
+
+    constructor(address _ubqtb, address _stkToken) {
+        ubqtb = IERC20(_ubqtb);
+        stkToken = stkUBQT_B(_stkToken);
+    }
+
+    function stake(uint256 amount) external {
+        require(amount > 0, "Amount must be greater than 0");
+        ubqtb.transferFrom(msg.sender, address(this), amount);
+
+        totalStaked += amount;
+        stakedBalances[msg.sender] += amount;
+
+        stkToken.mint(msg.sender, amount);
+    }
+
+    function unstake(uint256 amount) external {
+        require(amount > 0, "Amount must be greater than 0");
+        require(stakedBalances[msg.sender] >= amount, "Not enough staked");
+
+        stkToken.burn(msg.sender, amount);
+
+        stakedBalances[msg.sender] -= amount;
+        totalStaked -= amount;
+        ubqtb.transfer(msg.sender, amount);
+    }
+
+    function recoverTokens(address token, uint256 amount) external onlyOwner {
+        IERC20(token).transfer(owner(), amount);
+    }
+}
